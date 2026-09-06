@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Costos - Impresión 3D</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+        }
+
+        /* Quitar flechitas numéricas (spinners) */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        body {
+            background-color: #f8fafc;
+            color: #1e293b;
+            padding: 20px;
+            min-height: 100vh;
+            transition: background-color 0.3s ease;
+        }
+
+        body.modo-avanzado {
+            background-color: #edf2f7;
+        }
+
+        .app-layout {
+            display: flex;
+            gap: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+            flex-wrap: wrap;
+        }
+
+        .panel-historial {
+            flex: 1;
+            min-width: 300px;
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            max-height: 800px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #e2e8f0;
+        }
+
+        .contenedor-calc {
+            flex: 1.2;
+            min-width: 320px;
+            background-color: #ffffff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            position: relative;
+            border: 1px solid #e2e8f0;
+            transition: border-color 0.3s;
+        }
+
+        body.modo-avanzado .contenedor-calc {
+            border-left: 5px solid #8b5cf6;
+            border-top: 1px solid #cbd5e1;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3b82f6;
+        }
+
+        body.modo-avanzado .top-bar {
+            border-bottom-color: #8b5cf6;
+        }
+
+        .top-bar h1 {
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge-avanzado {
+            display: none;
+            font-size: 0.65rem;
+            background-color: #8b5cf6;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        body.modo-avanzado .badge-avanzado {
+            display: inline-block;
+        }
+
+        .controles-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Switch */
+        .switch-container {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: #64748b;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 22px;
+        }
+
+        .switch input { opacity: 0; width: 0; height: 0; }
+
+        .slider-switch {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #cbd5e1;
+            transition: .3s;
+            border-radius: 22px;
+        }
+
+        .slider-switch:before {
+            position: absolute;
+            content: "";
+            height: 16px; width: 16px;
+            left: 3px; bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider-switch { background-color: #8b5cf6; }
+        input:checked + .slider-switch:before { transform: translateX(22px); }
+
+        .btn-config {
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            cursor: pointer;
+            color: #64748b;
+            transition: color 0.2s;
+        }
+
+        .btn-config:hover { color: #1e293b; }
+
+        /* Campos */
+        .campo-grupo { margin-bottom: 14px; }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 4px;
+            font-size: 0.85rem;
+            color: #475569;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .input-contenedor {
+            position: relative;
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-contenedor input {
+            width: 100%;
+            padding: 8px 40px 8px 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            background-color: #ffffff;
+            color: #1e293b;
+            transition: border-color 0.2s;
+        }
+
+        .input-contenedor input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .unidad {
+            position: absolute;
+            right: 10px;
+            color: #94a3b8;
+            font-weight: 600;
+            font-size: 0.85rem;
+            pointer-events: none;
+        }
+
+        /* Grupo doble para Horas y Minutos */
+        .input-doble {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-default-chip {
+            background-color: #e2e8f0;
+            border: 1px solid #cbd5e1;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            cursor: pointer;
+            color: #475569;
+            transition: all 0.2s;
+        }
+
+        .btn-default-chip:hover {
+            background-color: #cbd5e1;
+            color: #0f172a;
+        }
+
+        /* Slider Margen */
+        .range-container {
+            margin-top: 6px;
+            padding: 0 4px;
+        }
+
+        .range-container input[type=range] {
+            width: 100%;
+            margin-bottom: 8px;
+            accent-color: #8b5cf6;
+            cursor: pointer;
+        }
+
+        .range-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #64748b;
+        }
+
+        .range-labels span {
+            padding: 2px 6px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            text-align: center;
+            width: 50px;
+        }
+
+        .range-labels span.activo {
+            color: #8b5cf6;
+            background-color: #f3e8ff;
+            border: 1px solid #d8b4fe;
+            font-weight: bold;
+        }
+
+        .solo-avanzado { display: none; }
+        body.modo-avanzado .solo-avanzado { display: block; }
+
+        .botones-grupo {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        button.btn-action {
+            flex: 1;
+            padding: 10px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-resetear { background-color: #94a3b8; color: white; }
+        .btn-resetear:hover { background-color: #64748b; }
+
+        .btn-guardar { background-color: #10b981; color: white; }
+        .btn-guardar:hover { background-color: #059669; }
+
+        /* Resultados */
+        .seccion-resultados {
+            background-color: #f1f5f9;
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .valores-salida { flex: 1; }
+
+        .resultado-linea {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .linea-venta-sugerida { color: #2563eb; font-weight: 500; }
+
+        .resultado-linea:last-child {
+            margin-bottom: 0;
+            padding-top: 8px;
+            border-top: 1px solid #cbd5e1;
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #10b981;
+        }
+
+        .bloque-cantidad {
+            width: 80px;
+            text-align: center;
+            border-left: 1px solid #cbd5e1;
+            padding-left: 10px;
+        }
+
+        .bloque-cantidad input {
+            width: 100%;
+            padding: 6px;
+            text-align: center;
+            font-weight: bold;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background-color: #fff;
+        }
+
+        /* Historial Acordeón y Borrado */
+        .historial-lista {
+            overflow-y: auto;
+            flex: 1;
+            margin-top: 12px;
+        }
+
+        .item-historial {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+
+        .header-historial {
+            padding: 10px;
+            background-color: #f8fafc;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #334155;
+        }
+
+        .info-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .acciones-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-borrar-item {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+            padding: 2px 4px;
+        }
+
+        .btn-borrar-item:hover {
+            opacity: 1;
+        }
+
+        .cuerpo-historial {
+            padding: 10px;
+            display: none;
+            background-color: #ffffff;
+            font-size: 0.8rem;
+            border-top: 1px solid #e2e8f0;
+            line-height: 1.5;
+        }
+
+        .item-historial.activo .cuerpo-historial { display: block; }
+
+        /* Modal Configuración */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(2px);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            width: 340px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+
+        .modal-header h3 {
+            font-size: 1.1rem;
+            color: #0f172a;
+        }
+
+        .btn-cerrar-modal {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #94a3b8;
+            cursor: pointer;
+        }
+
+        .btn-cerrar-modal:hover { color: #0f172a; }
+
+        .modal-body .campo-grupo label {
+            font-weight: 700;
+            color: #1e293b;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-layout">
+        
+        <!-- PANEL HISTORIAL -->
+        <div class="panel-historial">
+            <h3>Historial de Presupuestos</h3>
+            <div class="historial-lista" id="contenedorHistorial">
+                <!-- Se puebla dinámicamente -->
+            </div>
+        </div>
+
+        <!-- CALCULADORA -->
+        <div class="contenedor-calc">
+            <div class="top-bar">
+                <h1>Cotizador 3D <span class="badge-avanzado">Avanzado</span></h1>
+                <div class="controles-top">
+                    <div class="switch-container">
+                        <span>Básico</span>
+                        <label class="switch">
+                            <input type="checkbox" id="switchModo" onchange="toggleModo()">
+                            <span class="slider-switch"></span>
+                        </label>
+                        <span>Avanzado</span>
+                    </div>
+                    <button class="btn-config" onclick="abrirModalConfig()" title="Opciones por defecto">⚙️</button>
+                </div>
+            </div>
+
+            <!-- Campos Exclusivos Avanzado: Datos de cliente -->
+            <div class="solo-avanzado">
+                <div class="campo-grupo">
+                    <label for="nombreCliente">Cliente:</label>
+                    <div class="input-contenedor">
+                        <input type="text" id="nombreCliente">
+                    </div>
+                </div>
+                <div class="campo-grupo">
+                    <label for="nombrePieza">Nombre de la Pieza:</label>
+                    <div class="input-contenedor">
+                        <input type="text" id="nombrePieza">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulario Principal -->
+            <div class="campo-grupo solo-avanzado">
+                <label for="amortizacionHora">Amortización / Hora:</label>
+                <div class="input-wrapper">
+                    <div class="input-contenedor">
+                        <input type="number" id="amortizacionHora" oninput="calcularDinamico()">
+                        <span class="unidad">$/h</span>
+                    </div>
+                    <button class="btn-default-chip" onclick="aplicarDefault('amortizacionHora')">Default</button>
+                </div>
+            </div>
+
+            <div class="campo-grupo">
+                <label for="costoRollo">Coste del Rollo (1kg):</label>
+                <div class="input-wrapper">
+                    <div class="input-contenedor">
+                        <input type="number" id="costoRollo" oninput="calcularDinamico()">
+                        <span class="unidad">$/kg</span>
+                    </div>
+                    <button class="btn-default-chip solo-avanzado" onclick="aplicarDefault('costoRollo')">Default</button>
+                </div>
+            </div>
+
+            <div class="campo-grupo">
+                <label for="costoHora">Coste Uso por Hora:</label>
+                <div class="input-wrapper">
+                    <div class="input-contenedor">
+                        <input type="number" id="costoHora" oninput="calcularDinamico()">
+                        <span class="unidad">$/h</span>
+                    </div>
+                    <button class="btn-default-chip solo-avanzado" onclick="aplicarDefault('costoHora')">Default</button>
+                </div>
+            </div>
+
+            <div class="campo-grupo">
+                <label for="gramosPieza">Peso de la Pieza:</label>
+                <div class="input-contenedor">
+                    <input type="number" id="gramosPieza" oninput="calcularDinamico()">
+                    <span class="unidad">g</span>
+                </div>
+            </div>
+
+            <!-- Tiempo de Impresión divido en Horas y Minutos -->
+            <div class="campo-grupo">
+                <label>Tiempo de Impresión:</label>
+                <div class="input-doble">
+                    <div class="input-contenedor">
+                        <input type="number" id="tiempoHoras" min="0" oninput="calcularDinamico()">
+                        <span class="unidad">hs</span>
+                    </div>
+                    <div class="input-contenedor">
+                        <input type="number" id="tiempoMinutos" min="0" max="59" oninput="calcularDinamico()">
+                        <span class="unidad">min</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="campo-grupo solo-avanzado">
+                <label for="materialesAdicionales">Materiales Adicionales:</label>
+                <div class="input-contenedor">
+                    <input type="number" id="materialesAdicionales" value="0" oninput="calcularDinamico()">
+                    <span class="unidad">$</span>
+                </div>
+            </div>
+
+            <!-- Selector de Margen -->
+            <div class="campo-grupo">
+                <label>Margen de Ganancia:</label>
+                <div class="range-container">
+                    <input type="range" id="sliderMargen" min="1" max="5" step="1" value="2" oninput="cambiarSliderMargen()">
+                    <div class="range-labels">
+                        <span id="lbl-1">50%</span>
+                        <span id="lbl-2" class="activo">100%</span>
+                        <span id="lbl-3">150%</span>
+                        <span id="lbl-4">200%</span>
+                        <span id="lbl-5">Manual</span>
+                    </div>
+                </div>
+                <div class="input-contenedor" id="contenedorMargenManual" style="display:none; margin-top:10px;">
+                    <input type="number" id="margenGanancia" oninput="calcularDinamico()">
+                    <span class="unidad">%</span>
+                </div>
+            </div>
+
+            <!-- Botones -->
+            <div class="botones-grupo">
+                <button class="btn-action btn-resetear" onclick="resetearCalculadora()">Resetear</button>
+                <button class="btn-action btn-guardar solo-avanzado" onclick="guardarEnHistorial()">Guardar</button>
+            </div>
+
+            <!-- Bloque de Resultados -->
+            <div class="seccion-resultados">
+                <div class="valores-salida">
+                    <div class="resultado-linea">
+                        <span>Costo Producto:</span>
+                        <span class="val" id="outCostoProducto">$0.00</span>
+                    </div>
+                    <div class="resultado-linea linea-venta-sugerida">
+                        <span>Venta Sugerida:</span>
+                        <span class="val" id="outVentaSugerida">$0.00</span>
+                    </div>
+                    <div class="resultado-linea">
+                        <span>Ganancia Neta:</span>
+                        <span class="val" id="outGananciaNeta">$0.00</span>
+                    </div>
+                </div>
+                <div class="bloque-cantidad">
+                    <label for="inputCantidad">Cantidad</label>
+                    <input type="number" id="inputCantidad" value="1" min="1" oninput="calcularDinamico()">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Configuración -->
+    <div class="modal" id="modalConfig">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Valores por Defecto</h3>
+                <button class="btn-cerrar-modal" onclick="cerrarModalConfig()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="campo-grupo">
+                    <label>Amortización ($/h):</label>
+                    <div class="input-contenedor">
+                        <input type="number" id="cfgAmortizacion" value="155">
+                        <span class="unidad">$/h</span>
+                    </div>
+                </div>
+                <div class="campo-grupo">
+                    <label>Costo Rollo ($/kg):</label>
+                    <div class="input-contenedor">
+                        <input type="number" id="cfgRollo" value="18000">
+                        <span class="unidad">$/kg</span>
+                    </div>
+                </div>
+                <div class="campo-grupo">
+                    <label>Costo Uso por Hora ($):</label>
+                    <div class="input-contenedor">
+                        <input type="number" id="cfgUsoHora" value="200">
+                        <span class="unidad">$/h</span>
+                    </div>
+                </div>
+                <br>
+                <button class="btn-action btn-guardar" style="width:100%" onclick="guardarConfig()">Guardar Ajustes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let defaults = {
+            amortizacionHora: 155,
+            costoRollo: 18000,
+            costoHora: 200
+        };
+
+        let historial = [];
+
+        window.onload = function() {
+            cargarConfig();
+            cargarHistorial();
+            toggleModo();
+        };
+
+        function toggleModo() {
+            const esAvanzado = document.getElementById('switchModo').checked;
+            document.body.classList.toggle('modo-avanzado', esAvanzado);
+
+            if (!esAvanzado) {
+                document.getElementById('amortizacionHora').value = defaults.amortizacionHora;
+                document.getElementById('costoRollo').value = defaults.costoRollo;
+                document.getElementById('costoHora').value = defaults.costoHora;
+                document.getElementById('materialesAdicionales').value = 0;
+            }
+            calcularDinamico();
+        }
+
+        function abrirModalConfig() { document.getElementById('modalConfig').style.display = 'flex'; }
+        function cerrarModalConfig() { document.getElementById('modalConfig').style.display = 'none'; }
+        
+        function guardarConfig() {
+            defaults.amortizacionHora = parseFloat(document.getElementById('cfgAmortizacion').value) || 155;
+            defaults.costoRollo = parseFloat(document.getElementById('cfgRollo').value) || 18000;
+            defaults.costoHora = parseFloat(document.getElementById('cfgUsoHora').value) || 200;
+            
+            localStorage.setItem('3d_defaults', JSON.stringify(defaults));
+            cerrarModalConfig();
+            toggleModo();
+        }
+
+        function cargarConfig() {
+            const saved = localStorage.getItem('3d_defaults');
+            if (saved) {
+                defaults = JSON.parse(saved);
+                document.getElementById('cfgAmortizacion').value = defaults.amortizacionHora;
+                document.getElementById('cfgRollo').value = defaults.costoRollo;
+                document.getElementById('cfgUsoHora').value = defaults.costoHora;
+            }
+        }
+
+        function aplicarDefault(idCampo) {
+            document.getElementById(idCampo).value = defaults[idCampo];
+            calcularDinamico();
+        }
+
+        function cambiarSliderMargen() {
+            const val = document.getElementById('sliderMargen').value;
+            const inputManual = document.getElementById('contenedorMargenManual');
+            
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`lbl-${i}`).classList.remove('activo');
+            }
+            document.getElementById(`lbl-${val}`).classList.add('activo');
+
+            if (val === "5") {
+                inputManual.style.display = 'block';
+            } else {
+                inputManual.style.display = 'none';
+                const mapa = { "1": 50, "2": 100, "3": 150, "4": 200 };
+                document.getElementById('margenGanancia').value = mapa[val];
+            }
+            calcularDinamico();
+        }
+
+        function obtenerMargenSeleccionado() {
+            const val = document.getElementById('sliderMargen').value;
+            if (val === "5") {
+                return parseFloat(document.getElementById('margenGanancia').value) || 0;
+            }
+            const mapa = { "1": 50, "2": 100, "3": 150, "4": 200 };
+            return mapa[val];
+        }
+
+        function calcularDinamico() {
+            const costoRollo = parseFloat(document.getElementById('costoRollo').value) || 0;
+            const gramosPieza = parseFloat(document.getElementById('gramosPieza').value) || 0;
+            const costoHora = parseFloat(document.getElementById('costoHora').value) || 0;
+            const amortizacionHora = parseFloat(document.getElementById('amortizacionHora').value) || 0;
+            const materialesAdicionales = parseFloat(document.getElementById('materialesAdicionales').value) || 0;
+            const margenGanancia = obtenerMargenSeleccionado();
+            const cantidad = parseInt(document.getElementById('inputCantidad').value) || 1;
+
+            // Cálculo del tiempo total en minutos desde Horas y Minutos
+            const horas = parseFloat(document.getElementById('tiempoHoras').value) || 0;
+            const minutos = parseFloat(document.getElementById('tiempoMinutos').value) || 0;
+            const tiempoMinutosTotal = (horas * 60) + minutos;
+
+            if (costoRollo > 0 && gramosPieza > 0 && tiempoMinutosTotal > 0) {
+                const costoFilamento = (costoRollo / 1000) * gramosPieza;
+                const costoTiempoTotal = ((costoHora + amortizacionHora) / 60) * tiempoMinutosTotal;
+                
+                const costoProductoUnitario = costoFilamento + costoTiempoTotal + materialesAdicionales;
+                const ventaSugeridaUnitaria = costoProductoUnitario * (1 + (margenGanancia / 100));
+                const gananciaNetaUnitaria = ventaSugeridaUnitaria - costoProductoUnitario;
+
+                document.getElementById('outCostoProducto').innerText = `$${(costoProductoUnitario * cantidad).toFixed(2)}`;
+                document.getElementById('outVentaSugerida').innerText = `$${(ventaSugeridaUnitaria * cantidad).toFixed(2)}`;
+                document.getElementById('outGananciaNeta').innerText = `$${(gananciaNetaUnitaria * cantidad).toFixed(2)}`;
+            } else {
+                document.getElementById('outCostoProducto').innerText = "$0.00";
+                document.getElementById('outVentaSugerida').innerText = "$0.00";
+                document.getElementById('outGananciaNeta').innerText = "$0.00";
+            }
+        }
+
+        function guardarEnHistorial() {
+            const cliente = document.getElementById('nombreCliente').value.trim();
+            const pieza = document.getElementById('nombrePieza').value.trim();
+
+            if (!cliente || !pieza) {
+                alert("Para guardar en el historial, debes completar el Cliente y la Pieza.");
+                return;
+            }
+
+            const item = {
+                id: Date.now(),
+                cliente,
+                pieza,
+                costo: document.getElementById('outCostoProducto').innerText,
+                venta: document.getElementById('outVentaSugerida').innerText,
+                ganancia: document.getElementById('outGananciaNeta').innerText,
+                cantidad: document.getElementById('inputCantidad').value
+            };
+
+            historial.unshift(item);
+            localStorage.setItem('3d_historial', JSON.stringify(historial));
+            renderHistorial();
+        }
+
+        function cargarHistorial() {
+            const saved = localStorage.getItem('3d_historial');
+            if (saved) {
+                historial = JSON.parse(saved);
+                renderHistorial();
+            }
+        }
+
+        function renderHistorial() {
+            const contenedor = document.getElementById('contenedorHistorial');
+            contenedor.innerHTML = '';
+
+            historial.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'item-historial';
+                div.innerHTML = `
+                    <div class="header-historial" onclick="toggleAcordeon(this)">
+                        <div class="info-header">
+                            <span>${item.cliente} - ${item.pieza}</span>
+                        </div>
+                        <div class="acciones-header">
+                            <button class="btn-borrar-item" onclick="eliminarPresupuesto(event, ${item.id})" title="Eliminar presupuesto">🗑️</button>
+                            <span>▼</span>
+                        </div>
+                    </div>
+                    <div class="cuerpo-historial">
+                        <p><strong>Cant:</strong> ${item.cantidad}</p>
+                        <p><strong>Costo Total:</strong> ${item.costo}</p>
+                        <p><strong>Venta Sugerida:</strong> ${item.venta}</p>
+                        <p><strong>Ganancia Neta:</strong> ${item.ganancia}</p>
+                    </div>
+                `;
+                contenedor.appendChild(div);
+            });
+        }
+
+        function eliminarPresupuesto(event, id) {
+            event.stopPropagation();
+            
+            const confirmar = confirm("¿Estás seguro de que deseas eliminar este presupuesto?");
+            if (confirmar) {
+                historial = historial.filter(item => item.id !== id);
+                localStorage.setItem('3d_historial', JSON.stringify(historial));
+                renderHistorial();
+            }
+        }
+
+        function toggleAcordeon(elementHeader) {
+            const parent = elementHeader.parentElement;
+            const estabaActivo = parent.classList.contains('activo');
+
+            document.querySelectorAll('.item-historial').forEach(el => el.classList.remove('activo'));
+
+            if (!estabaActivo) {
+                parent.classList.add('activo');
+            }
+        }
+
+        function resetearCalculadora() {
+            document.getElementById('gramosPieza').value = '';
+            document.getElementById('tiempoHoras').value = '';
+            document.getElementById('tiempoMinutos').value = '';
+            document.getElementById('nombreCliente').value = '';
+            document.getElementById('nombrePieza').value = '';
+            document.getElementById('inputCantidad').value = 1;
+            document.getElementById('sliderMargen').value = 2;
+            cambiarSliderMargen();
+            toggleModo();
+        }
+    </script>
+</body>
+</html>
